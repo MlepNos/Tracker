@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from fastapi import Response
 
 from app.db import get_db
 from app.models import (
@@ -73,6 +74,19 @@ def list_collections(
         .all()
     )
 
+@router.delete("/collections/{collection_id}", status_code=204)
+def delete_collection(
+    collection_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    col = db.get(Collection, collection_id)
+    if not col or col.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    db.delete(col)
+    db.commit()
+    return Response(status_code=204)
 
 # -------------------------
 # Fields

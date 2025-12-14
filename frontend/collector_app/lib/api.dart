@@ -130,4 +130,8 @@ Future<List<dynamic>> getCollectionItems(String collectionId) async {
   return List<dynamic>.from(res.data);
 }
 
+Future<void> deleteCollection(String id) async {
+  await dio.delete('/collections/$id');
+}
+
 }

@@ -10,8 +10,13 @@ import 'collection_detail_page.dart';
 class CollectionTile extends StatelessWidget {
   final Map<String, dynamic> c;
   final VoidCallback onTap;
-
-  const CollectionTile({super.key, required this.c, required this.onTap});
+  final VoidCallback onDelete;
+  const CollectionTile({
+    super.key,
+    required this.c,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,49 +25,64 @@ class CollectionTile extends StatelessWidget {
 
     return _HoverCard(
   onTap: onTap,
-  child: Container(
-    decoration: BoxDecoration(
-      color: SteamColors.panel,
-      borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: SteamColors.panel2.withOpacity(0.7)),
-    ),
-    padding: const EdgeInsets.all(14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: SteamColors.panel2,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Icon(Icons.collections_bookmark, size: 40, color: SteamColors.textMuted),
+  child: Stack(
+  children: [
+    Container(
+      decoration: BoxDecoration(
+        color: SteamColors.panel,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: SteamColors.panel2.withOpacity(0.7)),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: SteamColors.panel2,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: Icon(Icons.collections_bookmark, size: 40, color: SteamColors.textMuted),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: SteamColors.text,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+          const SizedBox(height: 12),
+          Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: SteamColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          desc,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: SteamColors.textMuted),
-        ),
-      ],
+          const SizedBox(height: 4),
+          Text(
+            desc,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: SteamColors.textMuted),
+          ),
+        ],
+      ),
     ),
-  ),
+
+    Positioned(
+      top: 6,
+      right: 6,
+      child: IconButton(
+        tooltip: "Delete",
+        icon: const Icon(Icons.delete_outline, color: SteamColors.textMuted),
+        onPressed: onDelete,
+      ),
+    ),
+  ],
+),
+
 );
 
   }
@@ -274,17 +294,44 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 itemCount: filtered.length,
                 itemBuilder: (_, i) {
                   final c = Map<String, dynamic>.from(filtered[i]);
-                  return CollectionTile(
-                    c: c,
-                    onTap: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => CollectionDetailPage(collection: c),
-    ),
-  );
-},
+                 return CollectionTile(
+  c: c,
+  onTap: () {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CollectionDetailPage(collection: c),
+      ),
+    );
+  },
+  onDelete: () async {
+    final api = context.read<ApiClient>();
+    final id = c["id"].toString();
 
-                  );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete collection?"),
+        content: Text("Delete '${c["name"]}' and everything inside it?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    await api.deleteCollection(id);
+    await loadCollections();
+  },
+);
+
                 },
               );
             }
@@ -296,14 +343,44 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 final c = Map<String, dynamic>.from(filtered[i]);
                 return SizedBox(
                   height: 110,
-                  child: CollectionTile(c: c, onTap: () {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => CollectionDetailPage(collection: c),
-    ),
-  );
-},
+                  child: CollectionTile(
+  c: c,
+  onTap: () {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CollectionDetailPage(collection: c),
+      ),
+    );
+  },
+  onDelete: () async {
+    final api = context.read<ApiClient>();
+    final id = c["id"].toString();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete collection?"),
+        content: Text("Delete '${c["name"]}' and everything inside it?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    await api.deleteCollection(id);
+    await loadCollections();
+  },
 ),
+
                 );
               },
             );
