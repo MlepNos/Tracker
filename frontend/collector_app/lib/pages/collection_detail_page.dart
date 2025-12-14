@@ -55,6 +55,63 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
     }
   }
 
+  Future<void> _showCreateItemDialog() async {
+  final titleCtrl = TextEditingController();
+  final notesCtrl = TextEditingController();
+
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text("New Item"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: titleCtrl,
+            decoration: const InputDecoration(labelText: "Title"),
+          ),
+          TextField(
+            controller: notesCtrl,
+            decoration: const InputDecoration(labelText: "Notes (optional)"),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text("Cancel"),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text("Create"),
+        ),
+      ],
+    ),
+  );
+
+  if (ok != true) return;
+
+  try {
+    final api = context.read<ApiClient>();
+    final collectionId = widget.collection["id"].toString();
+
+    await api.createItem(
+      collectionId,
+      titleCtrl.text.trim(),
+      notes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+    );
+
+    await _load(); // refresh list
+  } catch (e) {
+    setState(() => error = e.toString());
+  }
+}
+
+
+
+
+
+
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthState>();
@@ -109,26 +166,39 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
             const SizedBox(height: 16),
 
             // Tabs
-            Row(
-              children: [
-                _TabChip(
-                  label: "ITEMS",
-                  active: tabIndex == 0,
-                  onTap: () => setState(() => tabIndex = 0),
-                ),
-                const SizedBox(width: 10),
-                _TabChip(
-                  label: "FIELDS",
-                  active: tabIndex == 1,
-                  onTap: () => setState(() => tabIndex = 1),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: _load,
-                  icon: const Icon(Icons.refresh, color: SteamColors.textMuted),
-                ),
-              ],
-            ),
+Row(
+  children: [
+    _TabChip(
+      label: "ITEMS",
+      active: tabIndex == 0,
+      onTap: () => setState(() => tabIndex = 0),
+    ),
+    const SizedBox(width: 10),
+    _TabChip(
+      label: "FIELDS",
+      active: tabIndex == 1,
+      onTap: () => setState(() => tabIndex = 1),
+    ),
+
+    const Spacer(),
+
+    // ✅ NEW ITEM BUTTON (only on Items tab)
+    if (tabIndex == 0)
+      ElevatedButton.icon(
+        onPressed: _showCreateItemDialog,
+        icon: const Icon(Icons.add),
+        label: const Text("New Item"),
+      ),
+
+    const SizedBox(width: 10),
+
+    IconButton(
+      onPressed: _load,
+      icon: const Icon(Icons.refresh, color: SteamColors.textMuted),
+    ),
+  ],
+),
+
 
             const SizedBox(height: 12),
 
@@ -145,8 +215,36 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
                           ],
                         )
                       : tabIndex == 0
-                          ? _ItemsList(items: items)
-                          : _FieldsList(fields: fields),
+    ? _ItemsList(
+        items: items,
+        onDelete: (itemId) async {
+          final ok = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text("Delete item?"),
+              content: const Text("This will permanently delete the item."),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text("Delete"),
+                ),
+              ],
+            ),
+          );
+
+          if (ok != true) return;
+
+          final api = context.read<ApiClient>();
+          await api.deleteItem(itemId);
+          await _load();
+        },
+      )
+    : _FieldsList(fields: fields),
+
             ),
           ],
         ),
@@ -191,7 +289,13 @@ class _TabChip extends StatelessWidget {
 
 class _ItemsList extends StatelessWidget {
   final List<dynamic> items;
-  const _ItemsList({required this.items});
+  final Future<void> Function(String itemId) onDelete;
+
+  const _ItemsList({
+    required this.items,
+    required this.onDelete,
+  });
+
 
   @override
   Widget build(BuildContext context) {
@@ -231,6 +335,12 @@ class _ItemsList extends StatelessWidget {
                   style: const TextStyle(color: SteamColors.text, fontWeight: FontWeight.w700),
                 ),
               ),
+              IconButton(
+  tooltip: "Delete",
+  onPressed: () => onDelete(it["id"].toString()),
+  icon: const Icon(Icons.delete_outline, color: SteamColors.textMuted),
+),
+
             ],
           ),
         );

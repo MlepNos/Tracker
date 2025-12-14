@@ -183,6 +183,23 @@ def list_items(
         .all()
     )
 
+@router.delete("/items/{item_id}")
+def delete_item(
+    item_id: UUID,
+    user_id: UUID = Depends(get_current_user),  # or get_test_user_id if still on temp auth
+    db: Session = Depends(get_db),
+):
+    item = db.get(Item, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    col = db.get(Collection, item.collection_id)
+    if not col or col.owner_id != user_id:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
 
 # -------------------------
 # Item field values

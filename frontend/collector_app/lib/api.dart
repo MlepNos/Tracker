@@ -134,4 +134,19 @@ Future<void> deleteCollection(String id) async {
   await dio.delete('/collections/$id');
 }
 
+
+Future<Map<String, dynamic>> createItem(String collectionId, String title, {String? notes}) async {
+  final res = await dio.post('/collections/$collectionId/items', data: {
+    "title": title,
+    "notes": notes,
+    "cover_image_url": null,
+  });
+  return Map<String, dynamic>.from(res.data);
+}
+
+Future<void> deleteItem(String itemId) async {
+  await dio.delete('/items/$itemId');
+}
+
+
 }
