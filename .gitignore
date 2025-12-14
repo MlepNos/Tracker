@@ -1,0 +1,148 @@
+############################################
+# Global / OS
+############################################
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*.swp
+*.swo
+
+############################################
+# IDEs / Editors
+############################################
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+############################################
+# Secrets / local env
+############################################
+.env
+.env.*
+*.env
+*.pem
+*.key
+secrets.*
+credentials.*
+*.p12
+*.pfx
+
+############################################
+# Logs
+############################################
+*.log
+logs/
+log/
+
+############################################
+# Python / FastAPI
+############################################
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging / builds
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Test / coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+pytestdebug.log
+
+# Type checking
+.pyre/
+.pytype/
+
+# Jupyter (if used)
+.ipynb_checkpoints/
+
+# Local DB / runtime artifacts
+*.sqlite3
+*.db
+instance/
+*.pid
+
+############################################
+# FastAPI / Uvicorn
+############################################
+# Common local run artifacts
+*.uvicorn*
+uvicorn*.log
+
+############################################
+# Flutter / Dart
+############################################
+# Dart tooling
+.dart_tool/
+.packages
+.pub/
+pubspec.lock
+
+# Flutter build outputs
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+
+# IDE / platform-specific generated files
+# Android
+android/.gradle/
+android/local.properties
+android/key.properties
+android/**/GeneratedPluginRegistrant.java
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+macos/Pods/
+macos/Flutter/ephemeral/
+macos/Runner/GeneratedPluginRegistrant.*
+
+# Windows
+windows/flutter/ephemeral/
+
+# Linux
+linux/flutter/ephemeral/
+
+# Web
+web/.dart_tool/
+web/build/
+
+############################################
+# Monorepo niceties (if you have /backend /frontend)
+############################################
+# Keep these if you generate API docs or similar
+# backend/openapi.json
+# backend/docs/
+
+############################################
+# Allowlist (keep templates if you have them)
+############################################
+!.env.example
+!.gitignore

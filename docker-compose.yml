@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:16
+    container_name: collector_db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: collector
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d collector"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+    container_name: collector_api
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      JWT_SECRET_KEY: "change-me-in-prod"
+      JWT_ALGORITHM: "HS256"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1"
+      REFRESH_TOKEN_EXPIRE_DAYS: "14"
+
+  
+
+
+volumes:
+  pg_data:
