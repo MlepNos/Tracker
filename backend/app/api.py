@@ -39,7 +39,22 @@ from app.auth import (
 )
 
 router = APIRouter()
+ANILIST_URL = "https://graphql.anilist.co"
 
+QUERY = """
+query ($search: String) {
+  Page(page: 1, perPage: 10) {
+    media(search: $search, type: ANIME) {
+      id
+      title { romaji english native }
+      coverImage { large }
+      startDate { year month day }
+      episodes
+      averageScore
+    }
+  }
+}
+"""
 
 def get_owned_collection(db: Session, collection_id: UUID, owner_id: UUID) -> Collection:
     col = db.get(Collection, collection_id)
@@ -437,3 +452,39 @@ def search_movies(
         })
 
     return results
+
+
+@router.get("/search/anime")
+def search_anime(
+    q: str = Query(..., min_length=1),
+    current_user: User = Depends(get_current_user),
+):
+    with httpx.Client(timeout=15) as client:
+        r = client.post(
+            ANILIST_URL,
+            json={"query": QUERY, "variables": {"search": q}},
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+        )
+        r.raise_for_status()
+        data = r.json()
+
+    media = data.get("data", {}).get("Page", {}).get("media", []) or []
+    out = []
+    for m in media:
+        title = (m.get("title") or {})
+        start = (m.get("startDate") or {})
+        released = "-".join(
+            [str(x).zfill(2) for x in [start.get("year"), start.get("month"), start.get("day")] if x]
+        ) or None
+
+        out.append({
+            "source": "anilist",          # match your other endpoints naming
+            "external_id": m.get("id"),   # match your other endpoints naming
+            "title": title.get("english") or title.get("romaji") or title.get("native") or "",
+            "cover_url": (m.get("coverImage") or {}).get("large"),
+            "released": released,
+            "episodes": m.get("episodes"),
+            "score": m.get("averageScore"),
+        })
+
+    return out

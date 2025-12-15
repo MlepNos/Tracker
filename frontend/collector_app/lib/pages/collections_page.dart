@@ -20,12 +20,24 @@ class CollectionTile extends StatelessWidget {
     required this.onTap,
     required this.onDelete,
   });
-
+  IconData _iconForType(String t) {
+    switch (t) {
+      case "movies":
+        return Icons.movie;
+      case "games":
+        return Icons.sports_esports;
+      case "anime":
+        return Icons.animation; // or Icons.auto_awesome
+      default:
+        return Icons.collections_bookmark;
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final name = (c["name"] ?? "") as String;
     final desc = (c["description"] ?? "") as String;
-
+    final type = (c["collection_type"] ?? "custom").toString();
+    final icon = _iconForType(type);
     return _HoverCard(
   onTap: onTap,
   child: Stack(

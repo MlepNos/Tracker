@@ -122,6 +122,7 @@ Future<void> _showCreateFieldDialog() async {
   
   final type = (widget.collection["collection_type"] ?? "custom").toString();
   final isMovies = type == "movies";
+  final isAnime = type == "anime";
   String? pickedCoverUrl;
 
   final ok = await showDialog<bool>(
@@ -181,14 +182,17 @@ Future<void> _showCreateFieldDialog() async {
 
                   final api = context.read<ApiClient>();
                   final results = (type == "movies")
-                    ? await api.searchMovies(q)
-                    : await api.searchGames(q);
+                      ? await api.searchMovies(q)
+                      : (type == "anime")
+                          ? await api.searchAnime(q)
+                          : await api.searchGames(q);
 
 
                   final picked = await showDialog<Map<String, dynamic>>(
                     context: ctx,
                     builder: (pickCtx) => AlertDialog(
-                      title: Text(isMovies ? "Pick a movie" : "Pick a game"),
+                      title: Text(isMovies ? "Pick a movie" : (isAnime ? "Pick an anime" : "Pick a game"),
+),
                       content: SizedBox(
                         width: 520,
                         height: 420,
@@ -232,7 +236,8 @@ Future<void> _showCreateFieldDialog() async {
                   });
                 },
                 icon: const Icon(Icons.search),
-                label: Text(isMovies ? "Search TMDB" : "Search RAWG"),
+                label: Text(isMovies ? "Search TMDB" : (isAnime ? "Search AniList" : "Search RAWG"),
+                ),
 
               ),
             ],

@@ -207,4 +207,8 @@ Future<List<dynamic>> searchMovies(String q) async {
 
 
 
+Future<List<dynamic>> searchAnime(String q) async {
+  final res = await dio.get("/search/anime", queryParameters: {"q": q});
+  return res.data as List<dynamic>;
+}
 }
