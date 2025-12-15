@@ -39,7 +39,7 @@ class Collection(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     owner: Mapped["User"] = relationship(back_populates="collections")
-
+    collection_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="custom")
 
 
 

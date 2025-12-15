@@ -19,7 +19,10 @@ services:
   api:
     build:
       context: ./backend
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     container_name: collector_api
+    env_file:
+      - ./backend/.env
     depends_on:
       db:
         condition: service_healthy
@@ -28,7 +31,7 @@ services:
     environment:
       JWT_SECRET_KEY: "change-me-in-prod"
       JWT_ALGORITHM: "HS256"
-      ACCESS_TOKEN_EXPIRE_MINUTES: "1"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
       REFRESH_TOKEN_EXPIRE_DAYS: "14"
 
   

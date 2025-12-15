@@ -111,11 +111,13 @@ class ApiClient {
     return List<dynamic>.from(res.data);
   }
 
-  Future<Map<String, dynamic>> createCollection(String name, String? description) async {
+  Future<Map<String, dynamic>> createCollection(String name, String? description,String type,) async {
     final res = await dio.post('/collections', data: {
-      'name': name,
-      'description': description,
-    });
+  'name': name,
+  'description': description,
+  'collection_type': type, // <-- new
+});
+
     return Map<String, dynamic>.from(res.data);
   }
 
@@ -135,18 +137,74 @@ Future<void> deleteCollection(String id) async {
 }
 
 
-Future<Map<String, dynamic>> createItem(String collectionId, String title, {String? notes}) async {
-  final res = await dio.post('/collections/$collectionId/items', data: {
-    "title": title,
-    "notes": notes,
-    "cover_image_url": null,
-  });
+Future<Map<String, dynamic>> createItem(
+  String collectionId,
+  String title, {
+  String? notes,
+  String? coverImageUrl,
+}) async {
+  final res = await dio.post(
+    '/collections/$collectionId/items',
+    data: {
+      "title": title,
+      "notes": notes,
+      "cover_image_url": coverImageUrl,
+    },
+  );
   return Map<String, dynamic>.from(res.data);
 }
+
 
 Future<void> deleteItem(String itemId) async {
   await dio.delete('/items/$itemId');
 }
+
+
+Future<List<dynamic>> getItemValues(String itemId) async {
+  final res = await dio.get('/items/$itemId/values');
+  return List<dynamic>.from(res.data);
+}
+
+Future<List<dynamic>> upsertItemValues(String itemId, List<Map<String, dynamic>> payload) async {
+  final res = await dio.post('/items/$itemId/values', data: payload);
+  return List<dynamic>.from(res.data);
+}
+
+
+
+Future<Map<String, dynamic>> createField(
+  String collectionId, {
+  required String fieldKey,
+  required String label,
+  required String dataType, // "text", "number", "boolean", "date", "single_select"
+  bool requiredField = false,
+  int sortOrder = 0,
+  Map<String, dynamic>? optionsJson,
+}) async {
+  final res = await dio.post('/collections/$collectionId/fields', data: {
+    "field_key": fieldKey,
+    "label": label,
+    "data_type": dataType,
+    "required": requiredField,
+    "sort_order": sortOrder,
+    "options_json": optionsJson,
+  });
+  return Map<String, dynamic>.from(res.data);
+}
+
+
+
+
+Future<List<dynamic>> searchGames(String q) async {
+  final res = await dio.get('/search/games', queryParameters: {"q": q});
+  return List<dynamic>.from(res.data);
+}
+
+Future<List<dynamic>> searchMovies(String q) async {
+  final res = await dio.get('/search/movies', queryParameters: {"q": q});
+  return List<dynamic>.from(res.data);
+}
+
 
 
 }

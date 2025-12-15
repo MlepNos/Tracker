@@ -3,6 +3,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi import Response
+import os
+import httpx
+from fastapi import Query
 
 from app.db import get_db
 from app.models import (
@@ -55,7 +58,7 @@ def create_collection(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    c = Collection(owner_id=current_user.id, name=payload.name, description=payload.description)
+    c = Collection(owner_id=current_user.id, name=payload.name, description=payload.description,collection_type=payload.collection_type,)
     db.add(c)
     db.commit()
     db.refresh(c)
@@ -186,7 +189,7 @@ def list_items(
 @router.delete("/items/{item_id}")
 def delete_item(
     item_id: UUID,
-    user_id: UUID = Depends(get_current_user),  # or get_test_user_id if still on temp auth
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     item = db.get(Item, item_id)
@@ -194,12 +197,13 @@ def delete_item(
         raise HTTPException(status_code=404, detail="Item not found")
 
     col = db.get(Collection, item.collection_id)
-    if not col or col.owner_id != user_id:
+    if not col or col.owner_id != current_user.id:
         raise HTTPException(status_code=404, detail="Item not found")
 
     db.delete(item)
     db.commit()
     return {"ok": True}
+
 
 # -------------------------
 # Item field values
@@ -248,11 +252,32 @@ def upsert_item_values(
             db.add(v)
             results.append(v)
 
+
     db.commit()
     for r in results:
         db.refresh(r)
 
-    return results
+    rows = (
+        db.query(ItemFieldValue, CollectionField)
+        .join(CollectionField, ItemFieldValue.field_id == CollectionField.id)
+        .filter(ItemFieldValue.item_id == item_id)
+        .all()
+    )
+
+    return [
+        {
+            "id": v.id,
+            "item_id": v.item_id,
+            "field_id": v.field_id,
+            "field_key": f.field_key,
+            "label": f.label,
+            "data_type": f.data_type,
+            "value": (v.value_json or {}).get("value"),
+            "value_json": v.value_json,
+        }
+        for (v, f) in rows
+    ]
+
 
 
 @router.get("/items/{item_id}/values", response_model=list[ItemFieldValueOut])
@@ -265,10 +290,32 @@ def list_item_values(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    # verify ownership via collection
-    _ = get_owned_collection(db, item.collection_id, current_user.id)
+    col = db.get(Collection, item.collection_id)
+    if not col or col.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Item not found")
 
-    return db.query(ItemFieldValue).filter(ItemFieldValue.item_id == item_id).all()
+    rows = (
+        db.query(ItemFieldValue, CollectionField)
+        .join(CollectionField, ItemFieldValue.field_id == CollectionField.id)
+        .filter(ItemFieldValue.item_id == item_id)
+        .all()
+    )
+
+    return [
+        {
+            "id": v.id,
+            "item_id": v.item_id,
+            "field_id": v.field_id,
+            "field_key": f.field_key,
+            "label": f.label,
+            "data_type": f.data_type,
+            "value": (v.value_json or {}).get("value"),
+            "value_json": v.value_json,
+        }
+        for (v, f) in rows
+    ]
+
+
 
 
 # -------------------------
@@ -327,3 +374,66 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
         access_token=create_access_token(user.id),
         refresh_token=create_refresh_token(user.id),
     )
+
+
+@router.get("/search/games")
+def search_games(
+    q: str = Query(..., min_length=1),
+    current_user: User = Depends(get_current_user),
+):
+    key = os.getenv("RAWG_API_KEY")
+    if not key:
+        raise HTTPException(status_code=500, detail="RAWG_API_KEY not set")
+
+    url = "https://api.rawg.io/api/games"
+    params = {"key": key, "search": q, "page_size": 10}
+
+    with httpx.Client(timeout=10) as client:
+        r = client.get(url, params=params)
+        r.raise_for_status()
+        data = r.json()
+
+    results = []
+    for g in data.get("results", []):
+        results.append({
+            "source": "rawg",
+            "external_id": g.get("id"),
+            "title": g.get("name"),
+            "cover_url": g.get("background_image"),
+            "released": g.get("released"),
+        })
+
+    return results
+
+
+@router.get("/search/movies")
+def search_movies(
+    q: str = Query(..., min_length=1),
+    current_user: User = Depends(get_current_user),
+):
+    key = os.getenv("TMDB_API_KEY")
+    if not key:
+        raise HTTPException(status_code=500, detail="TMDB_API_KEY not set")
+
+    url = "https://api.themoviedb.org/3/search/movie"
+    params = {"api_key": key, "query": q, "include_adult": "false"}
+
+    with httpx.Client(timeout=10) as client:
+        r = client.get(url, params=params)
+        r.raise_for_status()
+        data = r.json()
+
+    results = []
+    for m in data.get("results", [])[:10]:
+        poster = m.get("poster_path")
+        cover_url = f"https://image.tmdb.org/t/p/w500{poster}" if poster else None
+
+        results.append({
+            "source": "tmdb",
+            "external_id": m.get("id"),
+            "title": m.get("title"),
+            "cover_url": cover_url,
+            "released": m.get("release_date"),
+        })
+
+    return results

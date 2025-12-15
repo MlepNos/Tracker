@@ -8,6 +8,11 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# ✅ copy alembic files into the container
+COPY alembic.ini ./alembic.ini
+COPY alembic ./alembic
+
+# ✅ copy application code
 COPY app ./app
 
 EXPOSE 8000

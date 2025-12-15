@@ -6,6 +6,9 @@ import '../widgets/steam_header.dart';
 import '../theme/steam_theme.dart';
 import '../widgets/steam_sidebar.dart';
 import 'collection_detail_page.dart';
+import 'package:dio/dio.dart';
+
+
 
 class CollectionTile extends StatelessWidget {
   final Map<String, dynamic> c;
@@ -144,6 +147,58 @@ class _CollectionsPageState extends State<CollectionsPage> {
   String? error;
   List<dynamic> collections = [];
   String? selectedCollectionId; // null = all
+  final Map<String, List<Map<String, dynamic>>> _templates = {
+    "games": [
+      {"key": "platform", "label": "Platform", "type": "single_select", "options": ["PC", "PS5", "Xbox", "Switch"]},
+      {"key": "status", "label": "Status", "type": "single_select", "options": ["Backlog", "Playing", "Completed", "Dropped"]},
+      {"key": "hours", "label": "Hours Played", "type": "number"},
+      {"key": "rating", "label": "Rating", "type": "number"},
+      {"key": "release_date", "label": "Release Date", "type": "date"},
+      {"key": "developer", "label": "Developer", "type": "text"},
+    ],
+    "movies": [
+      {"key": "status", "label": "Status", "type": "single_select", "options": ["Planned", "Watched", "Dropped"]},
+      {"key": "rating", "label": "Rating", "type": "number"},
+      {"key": "release_date", "label": "Release Date", "type": "date"},
+      {"key": "director", "label": "Director", "type": "text"},
+      {"key": "runtime_min", "label": "Runtime (min)", "type": "number"},
+    ],
+    "anime": [
+      {"key": "status", "label": "Status", "type": "single_select", "options": ["Planned", "Watching", "Completed", "Dropped"]},
+      {"key": "episodes_watched", "label": "Episodes Watched", "type": "number"},
+      {"key": "total_episodes", "label": "Total Episodes", "type": "number"},
+      {"key": "rating", "label": "Rating", "type": "number"},
+      {"key": "release_date", "label": "Start Date", "type": "date"},
+      {"key": "studio", "label": "Studio", "type": "text"},
+    ],
+  };
+  Future<void> _seedTemplateFields(String collectionId, String type) async {
+  final api = context.read<ApiClient>();
+  final template = _templates[type];
+
+  if (template == null) return; // custom or unknown -> no seeding
+
+  for (int i = 0; i < template.length; i++) {
+    final f = template[i];
+    try {
+      await api.createField(
+  collectionId,
+  fieldKey: f["key"].toString(),
+  label: f["label"].toString(),
+  dataType: f["type"].toString(),
+  sortOrder: i,
+  optionsJson: (f["options"] != null)
+      ? {"options": List<String>.from(f["options"])}
+      : null,
+);
+
+    } on DioException catch (e) {
+      // If field already exists (409), ignore. Otherwise rethrow.
+      if (e.response?.statusCode != 409) rethrow;
+    }
+  }
+}
+
   Future<void> loadCollections() async {
     setState(() {
       loading = true;
@@ -164,66 +219,56 @@ class _CollectionsPageState extends State<CollectionsPage> {
  Future<void> createCollectionDialog() async {
   final nameCtrl = TextEditingController();
   final descCtrl = TextEditingController();
-  String type = "games"; // default
+  String type = "games";
 
-  final result = await showDialog<bool>(
+  final ok = await showDialog<bool>(
     context: context,
-    builder: (ctx) {
-      return AlertDialog(
-        title: const Text("New Collection"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: "Name (e.g. Games)"),
-            ),
-            TextField(
-              controller: descCtrl,
-              decoration: const InputDecoration(labelText: "Description"),
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: type,
-              items: const [
-                DropdownMenuItem(value: "games", child: Text("Games")),
-                DropdownMenuItem(value: "movies", child: Text("Movies")),
-                DropdownMenuItem(value: "anime", child: Text("Anime")),
-                DropdownMenuItem(value: "custom", child: Text("Custom")),
-              ],
-              onChanged: (v) => type = v ?? "games",
-              decoration: const InputDecoration(labelText: "Type"),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text("Create"),
+    builder: (ctx) => AlertDialog(
+      title: const Text("New Collection"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Name")),
+          TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description")),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: type,
+            items: const [
+              DropdownMenuItem(value: "games", child: Text("Games")),
+              DropdownMenuItem(value: "movies", child: Text("Movies")),
+              DropdownMenuItem(value: "anime", child: Text("Anime")),
+              DropdownMenuItem(value: "custom", child: Text("Custom")),
+            ],
+            onChanged: (v) => type = v ?? "games",
+            decoration: const InputDecoration(labelText: "Type"),
           ),
         ],
-      );
-    },
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+        ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Create")),
+      ],
+    ),
   );
 
-  if (result != true) return;
+  if (ok != true) return;
 
   try {
     final api = context.read<ApiClient>();
 
-    // TEMP: for now we only send name/description (backend doesn't store type yet)
-    await api.createCollection(
+    final created = await api.createCollection(
       nameCtrl.text.trim(),
       descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+      type,
     );
 
+    final collectionId = created["id"].toString();
+    await _seedTemplateFields(collectionId, type);
     await loadCollections();
   } catch (e) {
     setState(() => error = e.toString());
   }
 }
-
 
   @override
   void initState() {

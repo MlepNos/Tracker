@@ -6,7 +6,7 @@ from datetime import datetime
 class CollectionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=500)
-
+    collection_type: str = "custom"
 
 class CollectionOut(BaseModel):
     id: UUID
@@ -15,7 +15,7 @@ class CollectionOut(BaseModel):
     description: str | None
     created_at: datetime
     updated_at: datetime
-
+    collection_type: str
     class Config:
         from_attributes = True
 
@@ -75,6 +75,11 @@ class ItemFieldValueOut(BaseModel):
     id: UUID
     item_id: UUID
     field_id: UUID
+    field_key: str            # ✅ ADD
+    label: str                # ✅ ADD (optional but recommended)
+    data_type: str            # ✅ ADD (optional but recommended)
+
+    value: object | None = None
     value_json: dict
 
     class Config:
