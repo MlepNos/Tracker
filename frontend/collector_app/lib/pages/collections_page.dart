@@ -59,9 +59,10 @@ class CollectionTile extends StatelessWidget {
                 color: SteamColors.panel2,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Center(
-                child: Icon(Icons.collections_bookmark, size: 40, color: SteamColors.textMuted),
-              ),
+              child: Center(
+  child: Icon(icon, size: 40, color: SteamColors.textMuted),
+),
+
             ),
           ),
           const SizedBox(height: 12),
