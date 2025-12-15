@@ -34,7 +34,7 @@ class Collection(Base):
     description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     fields: Mapped[list["CollectionField"]] = relationship(back_populates="collection", cascade="all, delete-orphan")
     items: Mapped[list["Item"]] = relationship(back_populates="collection", cascade="all, delete-orphan")
-
+    icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

@@ -6,7 +6,7 @@ from fastapi import Response
 import os
 import httpx
 from fastapi import Query
-
+from pydantic import BaseModel
 from app.db import get_db
 from app.models import (
     User,
@@ -488,3 +488,32 @@ def search_anime(
         })
 
     return out
+
+
+class CollectionUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    icon_url: str | None = None
+    collection_type: str | None = None
+
+@router.patch("/collections/{collection_id}", response_model=CollectionOut)
+def update_collection(
+    collection_id: UUID,
+    payload: CollectionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    col = get_owned_collection(db, collection_id, current_user.id)
+
+    if payload.name is not None:
+        col.name = payload.name
+    if payload.description is not None:
+        col.description = payload.description
+    if payload.icon_url is not None:
+        col.icon_url = payload.icon_url
+    if payload.collection_type is not None:
+        col.collection_type = payload.collection_type
+
+    db.commit()
+    db.refresh(col)
+    return col

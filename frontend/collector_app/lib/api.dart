@@ -211,4 +211,20 @@ Future<List<dynamic>> searchAnime(String q) async {
   final res = await dio.get("/search/anime", queryParameters: {"q": q});
   return res.data as List<dynamic>;
 }
+
+
+Future<Map<String, dynamic>> updateCollection(
+  String id, {
+  String? name,
+  String? description,
+  String? iconUrl,
+}) async {
+  final res = await dio.patch('/collections/$id', data: {
+    if (name != null) "name": name,
+    if (description != null) "description": description,
+    if (iconUrl != null) "icon_url": iconUrl,
+  });
+  return Map<String, dynamic>.from(res.data);
+}
+
 }

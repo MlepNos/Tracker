@@ -7,6 +7,7 @@ class CollectionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=500)
     collection_type: str = "custom"
+    icon_url: str | None = None
 
 class CollectionOut(BaseModel):
     id: UUID
@@ -16,6 +17,7 @@ class CollectionOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     collection_type: str
+    icon_url: str | None
     class Config:
         from_attributes = True
 

@@ -14,11 +14,13 @@ class CollectionTile extends StatelessWidget {
   final Map<String, dynamic> c;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
   const CollectionTile({
     super.key,
     required this.c,
     required this.onTap,
     required this.onDelete,
+    required this.onEdit,
   });
   IconData _iconForType(String t) {
     switch (t) {
@@ -53,18 +55,36 @@ class CollectionTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Container(
+  child: Container(
+    width: double.infinity,
+    decoration: BoxDecoration(
+      color: SteamColors.panel2,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Center(
+      child: (() {
+        final iconUrl = (c["icon_url"] ?? "").toString();
+
+        if (iconUrl.isNotEmpty) {
+          return ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              iconUrl,
               width: double.infinity,
-              decoration: BoxDecoration(
-                color: SteamColors.panel2,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-  child: Icon(icon, size: 40, color: SteamColors.textMuted),
+              height: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Icon(icon, size: 40, color: SteamColors.textMuted),
+            ),
+          );
+        }
+
+        return Icon(icon, size: 40, color: SteamColors.textMuted);
+      })(),
+    ),
+  ),
 ),
 
-            ),
-          ),
           const SizedBox(height: 12),
           Text(
             name,
@@ -86,6 +106,15 @@ class CollectionTile extends StatelessWidget {
         ],
       ),
     ),
+Positioned(
+  top: 6,
+  right: 44,
+  child: IconButton(
+    tooltip: "Edit",
+    icon: const Icon(Icons.edit, color: SteamColors.textMuted),
+    onPressed: onEdit,
+  ),
+),
 
     Positioned(
       top: 6,
@@ -185,6 +214,44 @@ class _CollectionsPageState extends State<CollectionsPage> {
       {"key": "studio", "label": "Studio", "type": "text"},
     ],
   };
+
+  Future<void> editCollectionDialog(Map<String, dynamic> c) async {
+  final nameCtrl = TextEditingController(text: c["name"]?.toString() ?? "");
+  final descCtrl = TextEditingController(text: c["description"]?.toString() ?? "");
+  final iconCtrl = TextEditingController(text: c["icon_url"]?.toString() ?? "");
+
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text("Edit Collection"),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Name")),
+          TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description")),
+          TextField(controller: iconCtrl, decoration: const InputDecoration(labelText: "Icon / GIF URL")),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+        ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Save")),
+      ],
+    ),
+  );
+
+  if (ok != true) return;
+
+  final api = context.read<ApiClient>();
+  await api.updateCollection(
+    c["id"].toString(),
+    name: nameCtrl.text.trim(),
+    description: descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+    iconUrl: iconCtrl.text.trim().isEmpty ? null : iconCtrl.text.trim(),
+  );
+
+  await loadCollections();
+}
+
   Future<void> _seedTemplateFields(String collectionId, String type) async {
   final api = context.read<ApiClient>();
   final template = _templates[type];
@@ -353,14 +420,15 @@ class _CollectionsPageState extends State<CollectionsPage> {
                 itemBuilder: (_, i) {
                   final c = Map<String, dynamic>.from(filtered[i]);
                  return CollectionTile(
-  c: c,
-  onTap: () {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CollectionDetailPage(collection: c),
-      ),
-    );
-  },
+              c: c,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => CollectionDetailPage(collection: c),
+                  ),
+                );
+              },
+              onEdit: () => editCollectionDialog(c),
   onDelete: () async {
     final api = context.read<ApiClient>();
     final id = c["id"].toString();
@@ -410,6 +478,8 @@ class _CollectionsPageState extends State<CollectionsPage> {
       ),
     );
   },
+
+onEdit: () => editCollectionDialog(c),
   onDelete: () async {
     final api = context.read<ApiClient>();
     final id = c["id"].toString();
